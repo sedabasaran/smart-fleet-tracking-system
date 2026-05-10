@@ -11,7 +11,8 @@ public class UserMapper {
 
 	public User toEntity(UserRequestDto dto, String encodedPassword) {
 		return User.builder().username(dto.getUsername()).password(encodedPassword).email(dto.getEmail())
-				.role(User.Role.VIEWER).build();
+				.role(dto.getRole() != null && dto.getRole().equals("ADMIN") ? User.Role.ADMIN : User.Role.VIEWER)
+				.build();
 	}
 
 	public UserResponseDto toResponseDto(User user) {

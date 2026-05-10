@@ -7,15 +7,17 @@ import lombok.Data;
 
 @Data
 public class UserRequestDto {
-	
-    @NotBlank
-    private String username;
 
-    @NotBlank
-    @Size(min = 6, message = "Şifre en az 6 karakter olmalı")
-    private String password;
+	@NotBlank
+	private String username;
 
-    @Email
-    @NotBlank
-    private String email;
+	@NotBlank
+	@Size(min = 6, message = "Şifre en az 6 karakter olmalı")
+	private String password;
+
+	@Email
+	@NotBlank
+	private String email;
+
+	private String role;
 }

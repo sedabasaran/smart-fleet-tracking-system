@@ -1,11 +1,14 @@
 package com.fleettracking.fleet_tracker.simulation;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
-
+import com.fleettracking.fleet_tracker.entity.Device;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.fleettracking.fleet_tracker.dto.request.LocationRequestDto;
+import com.fleettracking.fleet_tracker.repository.DeviceRepository;
 import com.fleettracking.fleet_tracker.service.location.LocationService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,35 +20,44 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DeviceMovementSimulator {
 	private final LocationService locationService;
+	private final DeviceRepository deviceRepository;
 	private final Random random = new Random();
 
 	@Value("${simulation.enabled:true}")
 	private boolean enabled;
 
-	//İstanbul başlangıç koordinatları
-	private double lat = 41.0082;
-	private double lon = 28.9784;
+	// Her device'ın mevcut konumunu tutar
+	private final Map<Long, double[]> devicePositions = new HashMap<>();
 
 	@Scheduled(fixedRate = 5000)
 	public void simulateMovement() {
 		if (!enabled)
 			return;
 
-		lat += (random.nextDouble() - 0.5) * 0.001;
-		lon += (random.nextDouble() - 0.5) * 0.001;
+		// Aktif tüm cihazları çek
+		deviceRepository.findAll().stream().filter(d -> d.getStatus() == Device.DeviceStatus.ACTIVE).forEach(device -> {
 
-		LocationRequestDto dto = new LocationRequestDto();
-		dto.setDeviceId(1L);
-		dto.setLatitude(lat);
-		dto.setLongitude(lon);
-		dto.setSpeed(random.nextDouble() * 80);
-		dto.setHeading(random.nextDouble() * 360);
+			// İlk kez görüyorsak İstanbul
+			devicePositions.putIfAbsent(device.getId(), new double[] { 41.0082 + (random.nextDouble() - 0.5) * 0.05,
+					28.9784 + (random.nextDouble() - 0.5) * 0.05 });
 
-		try {
-			locationService.saveLocation(dto);
-			log.debug("Simüle konum: lat={}, lon={}", lat, lon);
-		} catch (Exception e) {
-			log.warn("Simülasyon atlandı (device hazır değil): {}", e.getMessage());
-		}
+			double[] pos = devicePositions.get(device.getId());
+			pos[0] += (random.nextDouble() - 0.5) * 0.001;
+			pos[1] += (random.nextDouble() - 0.5) * 0.001;
+
+			LocationRequestDto dto = new LocationRequestDto();
+			dto.setDeviceId(device.getId());
+			dto.setLatitude(pos[0]);
+			dto.setLongitude(pos[1]);
+			dto.setSpeed(random.nextDouble() * 80);
+			dto.setHeading(random.nextDouble() * 360);
+
+			try {
+				locationService.saveLocation(dto);
+				log.debug("Simüle: device={}, lat={}, lon={}", device.getDeviceCode(), pos[0], pos[1]);
+			} catch (Exception e) {
+				log.warn("Simülasyon hatası: {}", e.getMessage());
+			}
+		});
 	}
 }

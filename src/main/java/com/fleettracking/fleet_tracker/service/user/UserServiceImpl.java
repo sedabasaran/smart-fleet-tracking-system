@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
 		if (!passwordEncoder.matches(password, user.getPassword())) {
 			throw new RuntimeException("Şifre hatalı");
 		}
-		return jwtUtil.generateToken(username);
+		return jwtUtil.generateToken(username, user.getRole().name()); // role ekle
 	}
 
 }
