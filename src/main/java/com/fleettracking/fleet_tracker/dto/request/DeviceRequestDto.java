@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class DeviceRequestDto {
 
-    @NotBlank(message = "Device code sboş olamaz")
+    @NotBlank(message = "Device kod boş olamaz")
 	private String deviceCode;
 	
     @NotBlank(message = "İsim boş olamaz")
