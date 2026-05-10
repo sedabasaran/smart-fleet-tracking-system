@@ -26,7 +26,7 @@ public class DeviceMovementSimulator {
 	@Value("${simulation.enabled:true}")
 	private boolean enabled;
 
-	// Her device'ın mevcut konumunu tutar
+	// Her device'ın mevcut konumu
 	private final Map<Long, double[]> devicePositions = new HashMap<>();
 
 	@Scheduled(fixedRate = 5000)
@@ -34,7 +34,6 @@ public class DeviceMovementSimulator {
 		if (!enabled)
 			return;
 
-		// Aktif tüm cihazları çek
 		deviceRepository.findAll().stream().filter(d -> d.getStatus() == Device.DeviceStatus.ACTIVE).forEach(device -> {
 
 			// İlk kez görüyorsak İstanbul
