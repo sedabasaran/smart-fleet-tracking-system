@@ -21,7 +21,10 @@ Araç ve cihazların gerçek zamanlı takibini sağlayan backend sistemi. Java 1
 
 Java 17 · Spring Boot 3.2 · Spring Security · Spring Data JPA · PostgreSQL · WebSocket · Lombok · JWT
 
-![Demo](demo/demo)
+
+https://github.com/user-attachments/assets/7cbf6a15-797d-4e76-81f4-830bcdf5df20
+
+
 
 ## Mimari
 
