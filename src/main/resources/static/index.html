@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Fleet Tracking</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c10; --surface: #111318; --border: #1e2330;
+            --accent: #00e5ff; --accent2: #ff6b35; --green: #00ff88;
+            --text: #e2e8f0; --muted: #4a5568; --panel-w: 320px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        #panel { width: var(--panel-w); min-width: var(--panel-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
+        #panel-header { padding: 20px; border-bottom: 1px solid var(--border); }
+        #panel-header h1 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); }
+        #panel-header p { font-size: 10px; color: var(--muted); margin-top: 4px; }
+        #status-bar { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 11px; }
+        #ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
+        #ws-dot.connected { background: var(--green); animation: pulse 2s infinite; }
+        #ws-dot.error { background: var(--accent2); }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #ws-label { color: var(--muted); }
+        #auth-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        #auth-section label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+        #auth-section input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 8px 10px; margin-bottom: 8px; outline: none; transition: border-color 0.2s; }
+        #auth-section input:focus { border-color: var(--accent); }
+        #auth-section input::placeholder { color: var(--muted); }
+        #login-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; padding: 9px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; transition: opacity 0.2s; }
+        #login-btn:hover { opacity: 0.85; }
+        #login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #auth-msg { font-size: 10px; margin-top: 6px; min-height: 14px; }
+        #auth-msg.ok { color: var(--green); }
+        #auth-msg.err { color: var(--accent2); }
+        #stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-bottom: 1px solid var(--border); background: var(--border); }
+        .stat { background: var(--surface); padding: 14px 16px; }
+        .stat-label { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+        .stat-value { font-size: 22px; font-family: 'Syne', sans-serif; font-weight: 800; color: var(--accent); margin-top: 2px; }
+        .stat-value.green { color: var(--green); }
+        #devices-header { padding: 12px 20px 8px; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        #device-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+        #device-list::-webkit-scrollbar { width: 3px; }
+        #device-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .device-item { padding: 10px 20px; border-left: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+        .device-item:hover { background: rgba(0,229,255,0.04); border-left-color: var(--accent); }
+        .device-item.active { background: rgba(0,229,255,0.07); border-left-color: var(--accent); }
+        .device-code { font-size: 12px; font-weight: 600; color: var(--text); }
+        .device-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+        .device-speed { font-size: 10px; color: var(--accent2); margin-top: 1px; }
+        .device-updated { font-size: 9px; color: var(--muted); margin-top: 1px; }
+        #log-section { border-top: 1px solid var(--border); padding: 10px 0 0; max-height: 140px; display: flex; flex-direction: column; }
+        #log-header { padding: 0 20px 8px; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+        #log { flex: 1; overflow-y: auto; padding: 0 20px 10px; }
+        #log::-webkit-scrollbar { width: 3px; }
+        #log::-webkit-scrollbar-thumb { background: var(--border); }
+        .log-entry { font-size: 10px; color: var(--muted); padding: 2px 0; opacity: 0; animation: fadeIn 0.3s forwards; }
+        .log-entry span { color: var(--accent); }
+        .log-entry.ws { color: var(--green); opacity: 1; }
+        .log-entry.err { color: var(--accent2); opacity: 1; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        #map { flex: 1; position: relative; }
+        .leaflet-tile { filter: invert(1) hue-rotate(180deg) saturate(0.8) brightness(0.85); }
+        #map-overlay { position: absolute; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+        .overlay-chip { background: rgba(10,12,16,0.88); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; font-size: 11px; backdrop-filter: blur(8px); }
+        .overlay-chip span { color: var(--accent); font-weight: 600; }
+        .fleet-marker { width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid rgba(0,229,255,0.8); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px rgba(0,229,255,0.5); }
+        .fleet-marker.moving { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,136,0.6); }
+        .fleet-marker-inner { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: rotate(45deg); }
+        .fleet-marker.moving .fleet-marker-inner { background: var(--green); }
+        .fleet-tooltip { background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text) !important; font-family: 'JetBrains Mono', monospace !important; font-size: 11px !important; border-radius: 4px !important; padding: 6px 10px !important; }
+    </style>
+</head>
+<body>
+<div id="panel">
+    <div id="panel-header">
+        <h1>Fleet Tracking</h1>
+        <p>SMART FLEET TRACKING SYSTEM v1.0</p>
+    </div>
+    <div id="status-bar">
+        <div id="ws-dot"></div>
+        <span id="ws-label">WebSocket bağlanıyor...</span>
+    </div>
+    <div id="auth-section">
+        <label>Kullanıcı Adı</label>
+        <input type="text" id="username" placeholder="admin" value="admin"/>
+        <label>Şifre</label>
+        <input type="password" id="password" placeholder="••••••"/>
+        <button id="login-btn" onclick="login()">Bağlan</button>
+        <div id="auth-msg"></div>
+    </div>
+    <div id="stats">
+        <div class="stat">
+            <div class="stat-label">Aktif Araç</div>
+            <div class="stat-value" id="stat-devices">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Konum/dk</div>
+            <div class="stat-value green" id="stat-updates">0</div>
+        </div>
+    </div>
+    <div id="devices-header">Araçlar</div>
+    <div id="device-list">
+        <div style="padding:20px;font-size:11px;color:var(--muted);text-align:center">Giriş yapın</div>
+    </div>
+    <div id="log-section">
+        <div id="log-header">Canlı Log</div>
+        <div id="log"></div>
+    </div>
+</div>
+<div id="map">
+    <div id="map-overlay">
+        <div class="overlay-chip">Koordinat: <span id="overlay-coords">—</span></div>
+        <div class="overlay-chip">WebSocket: <span id="overlay-ws">Bağlantı yok</span></div>
+    </div>
+</div>
+<script>
+let token=null,ws=null,map=null,markers={},deviceData={},updateCount=0,updateCountPerMin=0;
+map=L.map('map',{zoomControl:false}).setView([41.0082,28.9784],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+map.on('mousemove',e=>{document.getElementById('overlay-coords').textContent=`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;});
+async function login(){
+    const username=document.getElementById('username').value;
+    const password=document.getElementById('password').value;
+    const btn=document.getElementById('login-btn');
+    const msg=document.getElementById('auth-msg');
+    btn.disabled=true; btn.textContent='Bağlanıyor...';
+    try{
+        const res=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+        const data=await res.json();
+        if(data.success&&data.data?.token){
+            token=data.data.token;
+            msg.className='ok'; msg.textContent='✓ Giriş başarılı';
+            btn.textContent='Bağlandı';
+            addLog(`Login: ${username}`,'ws');
+            loadDevices(); connectWebSocket();
+        } else throw new Error(data.message||'Giriş başarısız');
+    } catch(e){
+        msg.className='err'; msg.textContent='✗ '+e.message;
+        btn.disabled=false; btn.textContent='Bağlan';
+    }
+}
+async function loadDevices(){
+    if(!token)return;
+    try{
+        const res=await fetch('/api/v1/devices',{headers:{'Authorization':'Bearer '+token}});
+        const data=await res.json();
+        if(data.success){
+            document.getElementById('stat-devices').textContent=data.data.length;
+            renderDeviceList(data.data);
+        }
+    }catch(e){addLog('Device yüklenemedi','err');}
+}
+function renderDeviceList(devices){
+    const list=document.getElementById('device-list');
+    if(!devices.length){list.innerHTML='<div style="padding:20px;font-size:11px;color:var(--muted);text-align:center">Araç bulunamadı</div>';return;}
+    list.innerHTML=devices.map(d=>`
+        <div class="device-item" id="di-${d.deviceCode}" onclick="focusDevice('${d.deviceCode}')">
+            <div class="device-code">${d.deviceCode}</div>
+            <div class="device-meta">${d.name} · ${d.type||'VEHICLE'}</div>
+            <div class="device-speed" id="spd-${d.deviceCode}">— km/h</div>
+            <div class="device-updated" id="upd-${d.deviceCode}">Bekleniyor...</div>
+        </div>`).join('');
+}
+function connectWebSocket(){
+    ws=new WebSocket(`ws://${location.host}/ws/locations`);
+    ws.onopen=()=>{setWsStatus('connected','Canlı · WebSocket');document.getElementById('overlay-ws').textContent='Bağlı';addLog('WebSocket bağlandı','ws');};
+    ws.onmessage=(event)=>{try{handleLocationUpdate(JSON.parse(event.data));}catch(e){}};
+    ws.onclose=()=>{setWsStatus('','Bağlantı kesildi...');document.getElementById('overlay-ws').textContent='Bağlantı yok';setTimeout(connectWebSocket,3000);};
+    ws.onerror=()=>setWsStatus('error','Bağlantı hatası');
+}
+function handleLocationUpdate(loc){
+    const{deviceCode,lat,lon,speed}=loc;
+    const isNew=!deviceData[deviceCode];
+    deviceData[deviceCode]={lat,lon,speed};
+    if(isNew)createMarker(deviceCode,lat,lon,speed);
+    else moveMarker(deviceCode,lat,lon,speed);
+    const spdEl=document.getElementById(`spd-${deviceCode}`);
+    const updEl=document.getElementById(`upd-${deviceCode}`);
+    if(spdEl)spdEl.textContent=`${(speed||0).toFixed(1)} km/h`;
+    if(updEl)updEl.textContent=new Date().toLocaleTimeString('tr-TR');
+    updateCount++; updateCountPerMin++;
+    document.getElementById('stat-updates').textContent=updateCountPerMin;
+    if(updateCount%5===0)addLog(`${deviceCode} → ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+}
+function createMarker(deviceCode,lat,lon){
+    const icon=L.divIcon({className:'',html:`<div class="fleet-marker" id="m-${deviceCode}"><div class="fleet-marker-inner"></div></div>`,iconSize:[28,28],iconAnchor:[14,28]});
+    markers[deviceCode]=L.marker([lat,lon],{icon}).addTo(map).bindTooltip(`<b>${deviceCode}</b>`,{permanent:false,className:'fleet-tooltip',offset:[0,-30]});
+    addLog(`Yeni araç: ${deviceCode}`,'ws');
+}
+function moveMarker(deviceCode,lat,lon,speed){
+    const marker=markers[deviceCode];
+    if(!marker)return;
+    marker.setLatLng([lat,lon]);
+    const el=document.getElementById(`m-${deviceCode}`);
+    if(el){speed>5?el.classList.add('moving'):el.classList.remove('moving');}
+}
+function focusDevice(deviceCode){
+    document.querySelectorAll('.device-item').forEach(el=>el.classList.remove('active'));
+    const item=document.getElementById(`di-${deviceCode}`);
+    if(item)item.classList.add('active');
+    const d=deviceData[deviceCode];
+    if(d){map.flyTo([d.lat,d.lon],15,{duration:1});if(markers[deviceCode])markers[deviceCode].openTooltip();}
+}
+function setWsStatus(cls,text){document.getElementById('ws-dot').className=cls;document.getElementById('ws-label').textContent=text;}
+function addLog(msg,cls){
+    const log=document.getElementById('log');
+    const entry=document.createElement('div');
+    entry.className='log-entry '+(cls||'');
+    entry.innerHTML=`<span>${new Date().toLocaleTimeString('tr-TR',{hour12:false})}</span> ${msg}`;
+    log.prepend(entry);
+    while(log.children.length>30)log.removeChild(log.lastChild);
+}
+setInterval(()=>{updateCountPerMin=0;},60000);
+setInterval(()=>{if(token)loadDevices();},30000);
+</script>
+</body>
+</html>
