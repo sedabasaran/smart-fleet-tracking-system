@@ -24,6 +24,7 @@ Java 17 · Spring Boot 3.2 · Spring Security · Spring Data JPA · PostgreSQL �
 
 https://github.com/user-attachments/assets/7cbf6a15-797d-4e76-81f4-830bcdf5df20
 
+![Uploading Ekran Resmi 2026-05-14 00.02.41.png…]()
 
 
 ## Mimari
