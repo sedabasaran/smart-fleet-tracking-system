@@ -1,293 +1,276 @@
 # Smart Fleet Tracking System
 
-Araç ve cihazların gerçek zamanlı takibini sağlayan backend sistemi. Java 17 ve Spring Boot ile geliştirildi.
+🇹🇷 [Türkçe](#türkçe) | 🇬🇧 [English](#english)
 
-## Özellikler
+![Java](https://img.shields.io/badge/Java-17-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![WebSocket](https://img.shields.io/badge/WebSocket-Live-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-19%20passing-brightgreen)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue)
 
-- JWT kimlik doğrulama ve role bazlı yetkilendirme (ADMIN / VIEWER)
-- Cihaz yönetimi — CRUD işlemleri
-- Gerçek zamanlı konum takibi — WebSocket ile canlı veri akışı
-- GIS modülü:
+---
+
+## Türkçe
+
+### Proje Açıklaması
+
+Araç ve cihazların gerçek zamanlı takibini sağlayan backend sistemi. Java 17 ve Spring Boot 3.2 ile geliştirilmiş; WebSocket ile canlı konum akışı, GIS modülü, JWT kimlik doğrulama ve event-driven mimari içerir.
+
+### Özellikler
+
+- **JWT Kimlik Doğrulama** — Role bazlı yetkilendirme (ADMIN / VIEWER)
+- **Cihaz Yönetimi** — Tam CRUD işlemleri
+- **Gerçek Zamanlı Konum Takibi** — WebSocket ile canlı veri akışı
+- **GIS Modülü:**
   - Haversine formülü ile iki nokta arası mesafe hesabı
   - Heading (yön açısı) hesaplama
   - Belirli yarıçap içindeki cihazları bulma (radius query)
-- Event-driven mimari — Spring Events ile WebSocket broadcast
-- Çok araçlı simülasyon sistemi (5 saniyede bir konum üretir)
-- Global exception handling
-- Harita arayüzü — Leaflet.js ile gerçek zamanlı araç takibi
-- GitHub Actions CI/CD
+- **Event-Driven Mimari** — Spring Events ile WebSocket broadcast
+- **Simülasyon Sistemi** — 5 saniyede bir otomatik konum üretimi (5 araç)
+- **Harita Arayüzü** — Leaflet.js ile gerçek zamanlı araç takibi
+- **Global Exception Handling** — Tutarlı hata yanıtları
+- **CI/CD** — GitHub Actions ile otomatik build ve test
 
-## Teknolojiler
+### Teknolojiler
 
-Java 17 · Spring Boot 3.2 · Spring Security · Spring Data JPA · PostgreSQL · WebSocket · Lombok · JWT
-
-
-https://github.com/user-attachments/assets/7cbf6a15-797d-4e76-81f4-830bcdf5df20
-
-
-<img width="1440" height="900" alt="Ekran Resmi 2026-05-14 00 02 41" src="https://github.com/user-attachments/assets/3f09e548-eebd-4e2f-badf-768d63b13e29" />
-
-## Mimari
-
-```
-Controller → Service → Repository → PostgreSQL
-                ↓
-         Event Publisher
-                ↓
-       WebSocket Broadcast → Leaflet.js Harita
-```
-
-## Kurulum
-
-**Gereksinimler:** Java 17, PostgreSQL, Maven
-
-```bash
-# 1. PostgreSQL'de database oluştur
-CREATE DATABASE fleettracking;
-
-# 2. application.properties dosyasında şifreyi gir
-spring.datasource.password=senin_sifren
-
-# 3. Projeyi başlat
-mvn spring-boot:run
-```
-
-Uygulama `http://localhost:8080` adresinde çalışır.
-
-## API Endpoints
-
-### Auth
-
-| Method | URL | Açıklama | Auth |
-|--------|-----|----------|------|
-| POST | `/api/v1/auth/register` | Kullanıcı kaydı | ❌ |
-| POST | `/api/v1/auth/login` | Giriş → JWT token döner | ❌ |
-
-**Register:**
-```json
-POST /api/v1/auth/register
-{
-  "username": "admin",
-  "password": "123456",
-  "email": "admin@test.com",
-  "role": "ADMIN"
-}
-```
-
-**Login:**
-```json
-POST /api/v1/auth/login
-{
-  "username": "admin",
-  "password": "123456"
-}
-```
-
----
-
-### Devices
-
-| Method | URL | Açıklama | Yetki |
-|--------|-----|----------|-------|
-| POST | `/api/v1/devices` | Cihaz ekle | ADMIN |
-| GET | `/api/v1/devices` | Tüm cihazlar | ADMIN, VIEWER |
-| GET | `/api/v1/devices/{id}` | Cihaz detay | ADMIN, VIEWER |
-| PUT | `/api/v1/devices/{id}` | Güncelle | ADMIN |
-| DELETE | `/api/v1/devices/{id}` | Sil | ADMIN |
-
-**Cihaz ekle:**
-```json
-POST /api/v1/devices
-Authorization: Bearer <token>
-
-{
-  "deviceCode": "TRK-001",
-  "name": "Araç 1",
-  "type": "VEHICLE",
-  "status": "ACTIVE"
-}
-```
-
-**Status değerleri:** `ACTIVE` · `INACTIVE` · `MAINTENANCE`
-
----
-
-### Locations
-
-| Method | URL | Açıklama | Yetki |
-|--------|-----|----------|-------|
-| POST | `/api/v1/locations` | Konum kaydet | ADMIN |
-| GET | `/api/v1/locations/device/{id}/last` | Son konum | ADMIN, VIEWER |
-| GET | `/api/v1/locations/device/{id}/history` | Konum geçmişi | ADMIN, VIEWER |
-| GET | `/api/v1/locations/nearby` | Yakındaki cihazlar (GIS) | ADMIN, VIEWER |
-
-**Konum kaydet:**
-```json
-POST /api/v1/locations
-Authorization: Bearer <token>
-
-{
-  "deviceId": 1,
-  "latitude": 41.0082,
-  "longitude": 28.9784,
-  "speed": 65.5,
-  "heading": 90.0,
-  "altitude": 50.0
-}
-```
-
-**Yakındaki cihazlar:**
-```
-GET /api/v1/locations/nearby?lat=41.0082&lon=28.9784&radiusKm=10
-Authorization: Bearer <token>
-```
-
----
-
-### Analytics (GIS)
-
-| Method | URL | Açıklama | Yetki |
-|--------|-----|----------|-------|
-| GET | `/api/v1/analytics/distance` | İki nokta arası mesafe (km) | ADMIN, VIEWER |
-| GET | `/api/v1/analytics/heading` | Yön açısı (0-360°) | ADMIN, VIEWER |
-
-**Mesafe hesapla — İstanbul → Ankara:**
-```
-GET /api/v1/analytics/distance?lat1=41.0082&lon1=28.9784&lat2=39.9334&lon2=32.8597
-
-Sonuç: 349.2 km
-```
-
-**Yön açısı:**
-```
-GET /api/v1/analytics/heading?lat1=41.0082&lon1=28.9784&lat2=39.9334&lon2=32.8597
-
-Sonuç: 122.4° (güneydoğu)
-```
-
----
-
-### WebSocket
-
-```
-ws://localhost:8080/ws/locations
-```
-
-Bağlandıktan sonra her yeni konum kaydında otomatik mesaj gelir:
-
-```json
-{
-  "deviceCode": "TRK-001",
-  "lat": 41.0082,
-  "lon": 28.9784,
-  "speed": 65.5,
-  "recordedAt": "2025-05-10T17:30:00"
-}
-```
-
----
-
-## GIS Detayı
-
-Haversine formülü ile küre yüzeyinde mesafe hesabı — kütüphane kullanılmadı, saf Java implementasyonu.
-
-```java
-// İki koordinat arası mesafe (km)
-double distance = geoService.calculateDistance(lat1, lon1, lat2, lon2);
-
-// Yön açısı (0-360°)
-double heading = geoService.calculateHeading(lat1, lon1, lat2, lon2);
-
-// Radius içindeki cihazlar
-List<NearbyDeviceResponseDto> nearby = locationService.findNearbyDevices(lat, lon, radiusKm);
-```
-
-## Postman
-
-`SmartFleetTracking.postman_collection.json` dosyasını Postman'a import et.
-Login sonrası token otomatik set edilir, diğer isteklerde manuel girmene gerek kalmaz.# Smart Fleet Tracking System
-
-Java 17 ve Spring Boot kullanılarak geliştirilen, WebSocket destekli gerçek zamanlı araç ve cihaz takip backend sistemi.
-##  Özellikler
-
--  JWT kimlik doğrulama ve yetkilendirme (Spring Security)
--  Cihaz (Device) CRUD yönetimi
--  Gerçek zamanlı konum takibi — WebSocket ile canlı veri akışı
--  Event-driven mimari (Spring Events → WebSocket broadcast)
--  GIS — Coğrafi Hesaplamalar:
-  - Haversine formülü ile iki nokta arası mesafe (km)
-  - Heading (yön açısı) hesaplama 0–360°
-  - Belirli yarıçap içindeki cihazları bulma (Radius Query)
-  - Bounding box ön filtresi (performans optimizasyonu)
--  Konum simülasyon sistemi (İstanbul bazlı, 5 sn aralıklı)
--  Global exception handling (@RestControllerAdvice)
--  Docker & docker-compose
--  GitHub Actions CI/CD
-
-##  Mimari
-
-Client
-  │
-  ▼
-Controller Layer   ← REST API + Validation
-  │
-  ▼
-Service Layer      ← Business Logic + Event Publishing
-  │         │
-  ▼         ▼
-Repository  GeoService (Haversine / Heading / BoundingBox)
-  │
-  ▼
-PostgreSQL
-  │
-  ▼ (Event)
-WebSocket Handler  → Bağlı tüm client'lara broadcast
-
-##  GIS Endpoint'leri
-
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| GET | `/api/v1/locations/nearby?lat=41.0&lon=28.9&radiusKm=5` | Yakındaki cihazlar |
-| GET | `/api/v1/analytics/distance?lat1=41.0&lon1=28.9&lat2=41.1&lon2=29.0` | Mesafe (km) |
-| GET | `/api/v1/analytics/heading?lat1=41.0&lon1=28.9&lat2=41.1&lon2=29.0` | Yön açısı (°) |
-
-##  Tüm Endpoint'ler
-
-| Method | Endpoint | Auth | Açıklama |
-|--------|----------|------|----------|
-| POST | `/api/v1/auth/register` |  Kayıt |
-| POST | `/api/v1/auth/login` |  Giriş → JWT |
-| POST | `/api/v1/devices` |  Cihaz ekle |
-| GET | `/api/v1/devices` | Tüm cihazlar |
-| GET | `/api/v1/devices/{id}` |  Cihaz detay |
-| PUT | `/api/v1/devices/{id}` |  Güncelle |
-| DELETE | `/api/v1/devices/{id}` |  Sil |
-| POST | `/api/v1/locations` |  Konum kaydet |
-| GET | `/api/v1/locations/device/{id}/last` |  Son konum |
-| GET | `/api/v1/locations/device/{id}/history` |   Konum geçmişi |
-| GET | `/api/v1/locations/nearby` | Yakındaki cihazlar |
-| GET | `/api/v1/analytics/distance` |  Mesafe hesapla |
-| GET | `/api/v1/analytics/heading` |  Yön hesapla |
-| WS | `ws://localhost:8080/ws/locations` | Canlı konum akışı |
-
-##  Çalıştırma
-
-### Local
-bash
-# PostgreSQL'de fleettracking database oluştur
-# application.properties'te şifreni gir
-mvn spring-boot:run
-
-##  Teknoloji Stack
-
-| Kategori | Teknoloji |
-|----------|-----------|
+| Katman | Teknoloji |
+|---|---|
 | Dil | Java 17 |
 | Framework | Spring Boot 3.2 |
-| Güvenlik | Spring Security + JWT |
-| ORM | Spring Data JPA + Hibernate |
+| Güvenlik | Spring Security, JWT |
+| ORM | Spring Data JPA / Hibernate |
 | Veritabanı | PostgreSQL |
-| Gerçek Zamanlı | WebSocket |
-| Mimari | Katmanlı + Event-driven |
-| DevOps | Docker, GitHub Actions |
-| Build | Maven |
+| Gerçek Zamanlı | WebSocket (STOMP) |
+| Frontend | Leaflet.js |
+| Test | JUnit 5, MockMvc |
+| CI/CD | GitHub Actions |
+| Yardımcı | Lombok, Jackson |
+
+### Mimari
+
+```
+controller/     → REST API endpoint'leri
+service/        → İş mantığı katmanı
+repository/     → Veritabanı erişimi
+entity/         → Veritabanı tablo sınıfları
+dto/            → Request / Response nesneleri
+mapper/         → Entity ↔ DTO dönüşümleri
+event/          → Spring Event sınıfları
+listener/       → WebSocket broadcast listener'ları
+websocket/      → WebSocket konfigürasyonu
+security/       → JWT filter ve konfigürasyon
+simulation/     → Araç simülasyon motoru
+exception/      → Global exception handling
+```
+
+### API Endpoint'leri
+
+#### Kimlik Doğrulama
+| Metod | Endpoint | Açıklama |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Kullanıcı kaydı |
+| POST | `/api/v1/auth/login` | Giriş, JWT token döner |
+
+#### Cihaz Yönetimi
+| Metod | Endpoint | Açıklama |
+|---|---|---|
+| POST | `/api/v1/devices` | Yeni cihaz ekle |
+| GET | `/api/v1/devices` | Tüm cihazları listele |
+| GET | `/api/v1/devices/{id}` | ID ile cihaz getir |
+| PUT | `/api/v1/devices/{id}` | Cihaz güncelle |
+| DELETE | `/api/v1/devices/{id}` | Cihaz sil |
+
+#### Konum Takibi
+| Metod | Endpoint | Açıklama |
+|---|---|---|
+| POST | `/api/v1/locations` | Konum kaydı ekle |
+| GET | `/api/v1/locations/device/{id}` | Cihazın konum geçmişi |
+| GET | `/api/v1/locations/device/{id}/latest` | Son konum |
+
+#### Analitik
+| Metod | Endpoint | Açıklama |
+|---|---|---|
+| GET | `/api/v1/analytics/distance` | İki nokta arası mesafe |
+| GET | `/api/v1/analytics/nearby` | Yarıçap içindeki cihazlar |
+
+#### WebSocket
+| Endpoint | Açıklama |
+|---|---|
+| `ws://host/ws` | WebSocket bağlantı noktası |
+| `/topic/locations` | Canlı konum güncellemeleri |
+
+### Testler
+
+JUnit 5 ile yazılmış 19 birim ve entegrasyon testi.
+
+| Test Sınıfı | Tür | Ne Test Ediyor |
+|---|---|---|
+| `DeviceDaoTest` | Repository | Kaydetme, duplicate kod, findByCode, existsByCode, durum güncelleme |
+| `LocationDaoTest` | Repository | Konum kaydetme, cihaza göre listeleme, son konum bulma |
+| `DeviceServiceTest` | Service | CRUD işlemleri, hata fırlatma, DTO dönüşümleri |
+
+```bash
+mvn test
+# Tests run: 19, Failures: 0, Errors: 0
+```
+
+### Kurulum
+
+```bash
+# 1. Repoyu klonla
+git clone https://github.com/sedabasaran/smart-fleet-tracking.git
+cd smart-fleet-tracking
+
+# 2. Veritabanı oluştur
+psql -U postgres -c "CREATE DATABASE fleet_tracking;"
+
+# 3. application.properties güncelle
+spring.datasource.url=jdbc:postgresql://localhost:5432/fleet_tracking
+spring.datasource.username=kullanici_adi
+spring.datasource.password=sifre
+
+# 4. Çalıştır
+mvn spring-boot:run
+
+# 5. Harita arayüzüne eriş
+# http://localhost:8080
+```
+
+### Simülasyon
+
+Uygulama başladığında 5 araç otomatik oluşturulur ve her 5 saniyede bir konum günceller. Harita arayüzünden gerçek zamanlı takip edebilirsiniz.
+
+---
+
+## English
+
+### Project Description
+
+Real-time vehicle and device tracking backend system built with Java 17 and Spring Boot 3.2. Features live location streaming via WebSocket, GIS module, JWT authentication, and event-driven architecture.
+
+### Features
+
+- **JWT Authentication** — Role-based authorization (ADMIN / VIEWER)
+- **Device Management** — Full CRUD operations
+- **Real-Time Location Tracking** — Live data stream via WebSocket
+- **GIS Module:**
+  - Distance calculation using Haversine formula
+  - Heading (bearing angle) calculation
+  - Find devices within a given radius (radius query)
+- **Event-Driven Architecture** — WebSocket broadcast via Spring Events
+- **Simulation Engine** — Auto-generates location data every 5 seconds (5 vehicles)
+- **Map Interface** — Real-time vehicle tracking with Leaflet.js
+- **Global Exception Handling** — Consistent error responses
+- **CI/CD** — Automated build and test with GitHub Actions
+
+### Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.2 |
+| Security | Spring Security, JWT |
+| ORM | Spring Data JPA / Hibernate |
+| Database | PostgreSQL |
+| Real-Time | WebSocket (STOMP) |
+| Frontend | Leaflet.js |
+| Testing | JUnit 5, MockMvc |
+| CI/CD | GitHub Actions |
+| Utilities | Lombok, Jackson |
+
+### Architecture
+
+```
+controller/     → REST API endpoints
+service/        → Business logic
+repository/     → Database access
+entity/         → Database table mappings
+dto/            → Request / Response objects
+mapper/         → Entity ↔ DTO conversions
+event/          → Spring Event classes
+listener/       → WebSocket broadcast listeners
+websocket/      → WebSocket configuration
+security/       → JWT filter and configuration
+simulation/     → Vehicle simulation engine
+exception/      → Global exception handling
+```
+
+### API Endpoints
+
+#### Authentication
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Register new user |
+| POST | `/api/v1/auth/login` | Login, returns JWT token |
+
+#### Device Management
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/devices` | Create new device |
+| GET | `/api/v1/devices` | List all devices |
+| GET | `/api/v1/devices/{id}` | Get device by ID |
+| PUT | `/api/v1/devices/{id}` | Update device |
+| DELETE | `/api/v1/devices/{id}` | Delete device |
+
+#### Location Tracking
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/locations` | Add location record |
+| GET | `/api/v1/locations/device/{id}` | Device location history |
+| GET | `/api/v1/locations/device/{id}/latest` | Latest location |
+
+#### Analytics
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/analytics/distance` | Distance between two points |
+| GET | `/api/v1/analytics/nearby` | Devices within radius |
+
+#### WebSocket
+| Endpoint | Description |
+|---|---|
+| `ws://host/ws` | WebSocket connection |
+| `/topic/locations` | Live location updates |
+
+### Tests
+
+19 unit and integration tests written with JUnit 5.
+
+| Test Class | Type | What it tests |
+|---|---|---|
+| `DeviceDaoTest` | Repository | Save, duplicate code, findByCode, existsByCode, status update |
+| `LocationDaoTest` | Repository | Save location, list by device, find latest |
+| `DeviceServiceTest` | Service | CRUD operations, exception throwing, DTO mapping |
+
+```bash
+mvn test
+# Tests run: 19, Failures: 0, Errors: 0
+```
+
+### Setup
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/sedabasaran/smart-fleet-tracking.git
+cd smart-fleet-tracking
+
+# 2. Create database
+psql -U postgres -c "CREATE DATABASE fleet_tracking;"
+
+# 3. Update application.properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/fleet_tracking
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+
+# 4. Run
+mvn spring-boot:run
+
+# 5. Open map interface
+# http://localhost:8080
+```
+
+### Simulation
+
+On startup, 5 vehicles are automatically created and update their location every 5 seconds. Track them in real time via the map interface.
+
+
